@@ -7,6 +7,16 @@ pub struct Message {
     pub body: Body,
 }
 
+impl Message {
+    pub fn create_response(&self, body: Body) -> Message {
+        Message {
+            src: self.dest.clone(),
+            dest: self.src.clone(),
+            body,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
@@ -18,6 +28,15 @@ pub enum Body {
     },
     InitOk {
         in_reply_to: u64,
+    },
+    Echo {
+        msg_id: u64,
+        echo: String,
+    },
+    EchoOk {
+        msg_id: u64,
+        in_reply_to: u64,
+        echo: String,
     },
 }
 

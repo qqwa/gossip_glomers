@@ -43,6 +43,20 @@ impl Server {
                     // output.flush().unwrap();
                 }
                 messages::Body::InitOk { in_reply_to: _ } => todo!(),
+                messages::Body::Echo { msg_id, ref echo } => {
+                    let reply = message.create_response(messages::Body::EchoOk {
+                        msg_id: 1,
+                        in_reply_to: msg_id,
+                        echo: echo.clone(),
+                    });
+                    serde_json::to_writer(&mut output, &reply).unwrap();
+                    writeln!(&mut output).unwrap();
+                }
+                messages::Body::EchoOk {
+                    msg_id: _,
+                    in_reply_to: _,
+                    echo: _,
+                } => todo!(),
             };
         }
     }
