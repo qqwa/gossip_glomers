@@ -7,3 +7,5 @@ $(TARGET): $(wildcard src/**/*.rs) Cargo.toml
 echo: $(TARGET)
 	./maelstrom test -w echo --bin $(TARGET) --node-count 1 --time-limit 10
 
+serve:
+	./maelstrom serve

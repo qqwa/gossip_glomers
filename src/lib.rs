@@ -31,13 +31,9 @@ impl Server {
                     node_id: _,
                     node_ids: _,
                 } => {
-                    let reply = Message {
-                        src: message.dest,
-                        dest: message.src,
-                        body: messages::Body::InitOk {
-                            in_reply_to: msg_id,
-                        },
-                    };
+                    let reply = message.create_response(messages::Body::InitOk {
+                        in_reply_to: msg_id,
+                    });
                     serde_json::to_writer(&mut output, &reply).unwrap();
                     writeln!(&mut output).unwrap();
                     // output.flush().unwrap();
