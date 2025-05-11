@@ -34,7 +34,8 @@ pub enum Body {
         echo: String,
     },
     EchoOk {
-        msg_id: u64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        msg_id: Option<u64>,
         in_reply_to: u64,
         echo: String,
     },

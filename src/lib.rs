@@ -41,7 +41,7 @@ impl Server {
                 messages::Body::InitOk { in_reply_to: _ } => todo!(),
                 messages::Body::Echo { msg_id, ref echo } => {
                     let reply = message.create_response(messages::Body::EchoOk {
-                        msg_id: 1,
+                        msg_id: None,
                         in_reply_to: msg_id,
                         echo: echo.clone(),
                     });
