@@ -4,14 +4,30 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-use gossip_glomers::Server;
+use gossip_glomers::{Server, messages::Message};
 
 pub struct TestServer {
     // input_raw_msgs: Vec<String>,
-    // output_raw_msgs: Vec<String>,
+    output_raw_msgs: Vec<String>,
     input_sender: Option<Sender<String>>,
     output_receiver: Receiver<String>,
     handle: JoinHandle<()>,
+}
+
+pub struct ClosedServer {
+    output_raw_msgs: Vec<String>,
+}
+
+impl ClosedServer {
+    pub fn new(output_raw_msgs: Vec<String>) -> Self {
+        Self { output_raw_msgs }
+    }
+    pub fn get_parsed_messages(&mut self) -> Vec<Message> {
+        self.output_raw_msgs
+            .iter()
+            .filter_map(|line| serde_json::from_str(line).ok())
+            .collect()
+    }
 }
 
 impl TestServer {
@@ -27,6 +43,7 @@ impl TestServer {
         });
 
         TestServer {
+            output_raw_msgs: Vec::new(),
             input_sender: Some(input_sender),
             output_receiver,
             handle,
@@ -41,20 +58,33 @@ impl TestServer {
         self
     }
 
-    pub fn expect_raw_message(self, want: &str) -> Self {
-        let got = self
-            .output_receiver
-            .recv()
-            .expect("Sender is disconnected...");
+    pub fn expect_raw_message(mut self, want: &str) -> Self {
+        let got = self.wait_get_message();
         assert_eq!(want, got);
         self
     }
 
-    /// Not sure when this is useful, as it will happen automatically when
-    /// `TestServer` gets dropped
-    pub fn close(mut self) -> Self {
+    pub fn wait_get_message(&mut self) -> &String {
+        let msg = self.output_receiver.recv().expect("Channel disconnected..");
+        self.output_raw_msgs.push(msg);
+        self.output_raw_msgs.last().unwrap()
+    }
+
+    /// Closes the input and collects all remaining messages from the server
+    pub fn close(mut self) -> ClosedServer {
         self.input_sender = None;
-        self
+        self.consume_all_messages();
+        ClosedServer::new(self.output_raw_msgs)
+    }
+
+    fn consume_all_messages(&mut self) {
+        loop {
+            if let Ok(msg) = self.output_receiver.recv() {
+                self.output_raw_msgs.push(msg);
+            } else {
+                return;
+            }
+        }
     }
 }
 
@@ -111,7 +141,8 @@ impl Write for SenderWrite {
         self.buffer.extend_from_slice(&buf);
         let index = self.buffer.iter().position(|c| c == &b'\n');
         if let Some(index) = index {
-            let rem = self.buffer.split_off(index);
+            let rem = self.buffer.split_off(index + 1);
+            self.buffer.pop(); // remove b'\n'
             self.sender
                 .send(String::from_utf8(self.buffer.clone()).unwrap())
                 .expect("Receiver disconnected...");

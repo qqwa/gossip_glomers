@@ -39,6 +39,15 @@ pub enum Body {
         in_reply_to: u64,
         echo: String,
     },
+    Generate {
+        msg_id: u64,
+    },
+    GenerateOk {
+        in_reply_to: u64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        msg_id: Option<u64>,
+        id: String,
+    },
 }
 
 #[cfg(test)]

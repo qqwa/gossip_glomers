@@ -1,8 +1,9 @@
 use std::io::{BufRead, BufReader, Read, Write};
 
 use messages::Message;
+use uuid::Uuid;
 
-mod messages;
+pub mod messages;
 pub struct Server {}
 
 impl Server {
@@ -52,6 +53,20 @@ impl Server {
                     msg_id: _,
                     in_reply_to: _,
                     echo: _,
+                } => todo!(),
+                messages::Body::Generate { msg_id } => {
+                    let reply = message.create_response(messages::Body::GenerateOk {
+                        in_reply_to: msg_id,
+                        msg_id: None,
+                        id: Uuid::new_v4().to_string(),
+                    });
+                    serde_json::to_writer(&mut output, &reply).unwrap();
+                    writeln!(&mut output).unwrap();
+                }
+                messages::Body::GenerateOk {
+                    in_reply_to: _,
+                    msg_id: _,
+                    id: _,
                 } => todo!(),
             };
         }

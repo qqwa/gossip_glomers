@@ -1,4 +1,7 @@
+use std::collections::HashSet;
+
 use common::TestServer;
+use gossip_glomers::messages::Body;
 mod common;
 
 #[test]
@@ -12,6 +15,29 @@ fn init_message() {
 fn echo_message() {
     TestServer::new()
         .send_str( r#"{"src":"c1","dest":"n1","body":{"type":"echo","msg_id":1,"echo":"Please echo 35"}}"#)
-        .close() // prevents test to get stuck
         .expect_raw_message(r#"{"src":"n1","dest":"c1","body":{"type":"echo_ok","in_reply_to":1,"echo":"Please echo 35"}}"#);
+}
+
+#[test]
+fn generate_message() {
+    let mut server = TestServer::new()
+        .send_str(r#"{"src":"c1","dest":"n1","body":{"type":"generate","msg_id":1}}"#)
+        .send_str(r#"{"src":"c1","dest":"n1","body":{"type":"generate","msg_id":1}}"#)
+        .send_str(r#"{"src":"c1","dest":"n1","body":{"type":"generate","msg_id":1}}"#)
+        .close();
+
+    let ids: Vec<_> = server
+        .get_parsed_messages()
+        .into_iter()
+        .filter_map(|msg| {
+            if let Body::GenerateOk { id, .. } = msg.body {
+                Some(id)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    assert_eq!(ids.len(), 3);
+    assert_eq!(ids.iter().collect::<HashSet<_>>().len(), ids.len());
 }
