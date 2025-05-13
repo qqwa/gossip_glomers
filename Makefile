@@ -14,7 +14,7 @@ broadcast-single: $(TARGET)
 	./maelstrom test -w broadcast --bin $(TARGET) --time-limit 20 --rate 10 --node-count 1
 
 broadcast-multi: $(TARGET)
-	./maelstrom test -w broadcast --bin $(TARGET) --time-limit 20 --rate 10 --node-count 5 --node-count 1
+	./maelstrom test -w broadcast --bin $(TARGET) --time-limit 20 --rate 10 --node-count 5
 
 broadcast-faulty: $(TARGET)
 	./maelstrom test -w broadcast --bin $(TARGET) --time-limit 20 --rate 10 --node-count 5 --node-count 1 --nemesis partition

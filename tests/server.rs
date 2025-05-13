@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use common::TestServer;
-use gossip_glomers::messages::Body;
+use gossip_glomers::messages::{Body, Message};
 use serde_json::{Number, Value};
 mod common;
 
@@ -14,14 +14,14 @@ fn init_message() {
 
 #[test]
 fn echo_message() {
-    TestServer::new()
+    TestServer::init()
         .send_str( r#"{"src":"c1","dest":"n1","body":{"type":"echo","msg_id":1,"echo":"Please echo 35"}}"#)
         .expect_raw_message(r#"{"src":"n1","dest":"c1","body":{"type":"echo_ok","in_reply_to":1,"echo":"Please echo 35"}}"#);
 }
 
 #[test]
 fn generate_message() {
-    let mut server = TestServer::new()
+    let mut server = TestServer::init()
         .send_str(r#"{"src":"c1","dest":"n1","body":{"type":"generate","msg_id":1}}"#)
         .send_str(r#"{"src":"c1","dest":"n1","body":{"type":"generate","msg_id":1}}"#)
         .send_str(r#"{"src":"c1","dest":"n1","body":{"type":"generate","msg_id":1}}"#)
@@ -45,7 +45,7 @@ fn generate_message() {
 
 #[test]
 fn broadcast_message() {
-    TestServer::new()
+    TestServer::init()
         .send_str(
             r#"{"src":"c1","dest":"n1","body":{"type":"broadcast","message":1000,"msg_id":1}}"#,
         )
@@ -56,7 +56,7 @@ fn broadcast_message() {
 
 #[test]
 fn read_message_empty() {
-    TestServer::new()
+    TestServer::init()
         .send_str(r#"{"src":"c1","dest":"n1","body":{"type":"read","msg_id":1}}"#)
         .expect_raw_message(
             r#"{"src":"n1","dest":"c1","body":{"type":"read_ok","in_reply_to":1,"messages":[]}}"#,
@@ -65,7 +65,7 @@ fn read_message_empty() {
 
 #[test]
 fn read_message_single_value() {
-    let mut server = TestServer::new()
+    let mut server = TestServer::init()
         .send_str(
             r#"{"src":"c1","dest":"n1","body":{"type":"broadcast","message":1000,"msg_id":1}}"#,
         )
@@ -94,7 +94,7 @@ fn read_message_single_value() {
 
 #[test]
 fn read_message_different_value() {
-    let mut server = TestServer::new()
+    let mut server = TestServer::init()
         .send_str(
             r#"{"src":"c1","dest":"n1","body":{"type":"broadcast","message":1000,"msg_id":1}}"#,
         )
@@ -128,8 +128,67 @@ fn read_message_different_value() {
 }
 
 #[test]
+fn read_message_duplicate_value() {
+    let mut server = TestServer::init()
+        .send_str(
+            r#"{"src":"c1","dest":"n1","body":{"type":"broadcast","message":1000,"msg_id":1}}"#,
+        )
+        .send_str(
+            r#"{"src":"c1","dest":"n1","body":{"type":"broadcast","message":1000,"msg_id":1}}"#,
+        )
+        .send_str(r#"{"src":"c1","dest":"n1","body":{"type":"read","msg_id":1}}"#)
+        .close();
+
+    let msgs = server
+        .get_parsed_messages()
+        .into_iter()
+        .filter(|msg| matches!(msg.body, Body::ReadOk { .. }))
+        .collect::<Vec<_>>();
+
+    assert_eq!(msgs.len(), 1);
+    if let Body::ReadOk {
+        in_reply_to: _,
+        msg_id: _,
+        messages,
+    } = &msgs[0].body
+    {
+        let want: &[Value] = &[Number::from_u128(1000).into()];
+        assert_eq!(messages, want);
+    } else {
+        panic!("Should not happen as we filtered only for ReadOk");
+    }
+}
+
+#[test]
 fn topology_message() {
-    TestServer::new()
+    TestServer::init()
     .send_str(r#"{"src":"c1","dest":"n0","body":{"type":"topology","topology":{"n0":[]},"msg_id":1}}"#)
     .expect_raw_message(r#"{"src":"n0","dest":"c1","body":{"type":"topology_ok","in_reply_to":1}}"#);
+}
+
+#[test]
+fn forward_broadcast_messages() {
+    let mut server = TestServer::init()
+    .send_str(r#"{"src":"c1","dest":"n0","body":{"type":"topology","topology":{"n0":["n1"]},"msg_id":1}}"#)
+    .expect_raw_message(r#"{"src":"n0","dest":"c1","body":{"type":"topology_ok","in_reply_to":1}}"#)
+    .send_str(
+            r#"{"src":"c1","dest":"n1","body":{"type":"broadcast","message":"text","msg_id":1}}"#,
+        )
+        .close();
+
+    let expect = Message {
+        src: "n0".to_string(),
+        dest: "n1".to_string(),
+        body: Body::Broadcast {
+            message: Value::String("text".to_string()),
+            msg_id: 1,
+        },
+    };
+    let send_broadcast_message_to_n1 = server
+        .get_parsed_messages()
+        .into_iter()
+        .filter(|msg| msg == &expect)
+        .count();
+
+    assert_eq!(send_broadcast_message_to_n1, 1);
 }
