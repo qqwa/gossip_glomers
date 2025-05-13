@@ -126,3 +126,10 @@ fn read_message_different_value() {
         panic!("Should not happen as we filtered only for ReadOk");
     }
 }
+
+#[test]
+fn topology_message() {
+    TestServer::new()
+    .send_str(r#"{"src":"c1","dest":"n0","body":{"type":"topology","topology":{"n0":[]},"msg_id":1}}"#)
+    .expect_raw_message(r#"{"src":"n0","dest":"c1","body":{"type":"topology_ok","in_reply_to":1}}"#);
+}

@@ -30,7 +30,7 @@ impl Server {
             let Ok(message) = serde_json::from_str::<Message>(&line) else {
                 continue;
             };
-            // writeln!(&mut log, "{}", line).unwrap();
+            // writeln!(&mut _log, "{}", line).unwrap();
             match message.body {
                 messages::Body::Init {
                     msg_id,
@@ -99,9 +99,24 @@ impl Server {
                     writeln!(&mut output).unwrap();
                 }
                 messages::Body::ReadOk {
-                    in_reply_to,
+                    in_reply_to: _,
+                    msg_id: _,
+                    messages: _,
+                } => todo!(),
+                messages::Body::Topology {
                     msg_id,
-                    messages,
+                    topology: _,
+                } => {
+                    let reply = message.create_response(messages::Body::TopologyOk {
+                        in_reply_to: msg_id,
+                        msg_id: None,
+                    });
+                    serde_json::to_writer(&mut output, &reply).unwrap();
+                    writeln!(&mut output).unwrap();
+                }
+                messages::Body::TopologyOk {
+                    in_reply_to: _,
+                    msg_id: _,
                 } => todo!(),
             };
         }
