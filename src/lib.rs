@@ -1,14 +1,19 @@
 use std::io::{BufRead, BufReader, Read, Write};
 
 use messages::Message;
+use serde_json::Value;
 use uuid::Uuid;
 
 pub mod messages;
-pub struct Server {}
+pub struct Server {
+    messages: Vec<Value>,
+}
 
 impl Server {
     pub fn new() -> Server {
-        Server {}
+        Server {
+            messages: Vec::new(),
+        }
     }
 
     pub fn serve(
@@ -68,7 +73,11 @@ impl Server {
                     msg_id: _,
                     id: _,
                 } => todo!(),
-                messages::Body::Broadcast { message: _, msg_id } => {
+                messages::Body::Broadcast {
+                    message: ref msg,
+                    msg_id,
+                } => {
+                    self.messages.push(msg.clone());
                     let reply = message.create_response(messages::Body::BroadcastOk {
                         in_reply_to: msg_id,
                         msg_id: None,
@@ -84,7 +93,7 @@ impl Server {
                     let reply = message.create_response(messages::Body::ReadOk {
                         in_reply_to: msg_id,
                         msg_id: None,
-                        messages: Vec::new(),
+                        messages: self.messages.clone(),
                     });
                     serde_json::to_writer(&mut output, &reply).unwrap();
                     writeln!(&mut output).unwrap();

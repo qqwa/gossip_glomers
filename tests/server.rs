@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use common::TestServer;
 use gossip_glomers::messages::Body;
+use serde_json::{Number, Value};
 mod common;
 
 #[test]
@@ -60,4 +61,68 @@ fn read_message_empty() {
         .expect_raw_message(
             r#"{"src":"n1","dest":"c1","body":{"type":"read_ok","in_reply_to":1,"messages":[]}}"#,
         );
+}
+
+#[test]
+fn read_message_single_value() {
+    let mut server = TestServer::new()
+        .send_str(
+            r#"{"src":"c1","dest":"n1","body":{"type":"broadcast","message":1000,"msg_id":1}}"#,
+        )
+        .send_str(r#"{"src":"c1","dest":"n1","body":{"type":"read","msg_id":1}}"#)
+        .close();
+
+    let msgs = server
+        .get_parsed_messages()
+        .into_iter()
+        .filter(|msg| matches!(msg.body, Body::ReadOk { .. }))
+        .collect::<Vec<_>>();
+
+    assert_eq!(msgs.len(), 1);
+    if let Body::ReadOk {
+        in_reply_to: _,
+        msg_id: _,
+        messages,
+    } = &msgs[0].body
+    {
+        let want: &[Value] = &[Number::from_u128(1000).into()];
+        assert_eq!(messages, want);
+    } else {
+        panic!("Should not happen as we filtered only for ReadOk");
+    }
+}
+
+#[test]
+fn read_message_different_value() {
+    let mut server = TestServer::new()
+        .send_str(
+            r#"{"src":"c1","dest":"n1","body":{"type":"broadcast","message":1000,"msg_id":1}}"#,
+        )
+        .send_str(
+            r#"{"src":"c1","dest":"n1","body":{"type":"broadcast","message":"text","msg_id":1}}"#,
+        )
+        .send_str(r#"{"src":"c1","dest":"n1","body":{"type":"read","msg_id":1}}"#)
+        .close();
+
+    let msgs = server
+        .get_parsed_messages()
+        .into_iter()
+        .filter(|msg| matches!(msg.body, Body::ReadOk { .. }))
+        .collect::<Vec<_>>();
+
+    assert_eq!(msgs.len(), 1);
+    if let Body::ReadOk {
+        in_reply_to: _,
+        msg_id: _,
+        messages,
+    } = &msgs[0].body
+    {
+        let want: &[Value] = &[
+            Number::from_u128(1000).into(),
+            Value::String("text".to_string()),
+        ];
+        assert_eq!(messages, want);
+    } else {
+        panic!("Should not happen as we filtered only for ReadOk");
+    }
 }
