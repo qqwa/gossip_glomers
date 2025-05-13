@@ -80,6 +80,20 @@ impl Server {
                     in_reply_to: _,
                     msg_id: _,
                 } => todo!(),
+                messages::Body::Read { msg_id } => {
+                    let reply = message.create_response(messages::Body::ReadOk {
+                        in_reply_to: msg_id,
+                        msg_id: None,
+                        messages: Vec::new(),
+                    });
+                    serde_json::to_writer(&mut output, &reply).unwrap();
+                    writeln!(&mut output).unwrap();
+                }
+                messages::Body::ReadOk {
+                    in_reply_to,
+                    msg_id,
+                    messages,
+                } => todo!(),
             };
         }
     }

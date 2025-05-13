@@ -52,3 +52,12 @@ fn broadcast_message() {
             r#"{"src":"n1","dest":"c1","body":{"type":"broadcast_ok","in_reply_to":1}}"#,
         );
 }
+
+#[test]
+fn read_message_empty() {
+    TestServer::new()
+        .send_str(r#"{"src":"c1","dest":"n1","body":{"type":"read","msg_id":1}}"#)
+        .expect_raw_message(
+            r#"{"src":"n1","dest":"c1","body":{"type":"read_ok","in_reply_to":1,"messages":[]}}"#,
+        );
+}

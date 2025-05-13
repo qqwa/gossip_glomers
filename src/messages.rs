@@ -57,6 +57,15 @@ pub enum Body {
         #[serde(skip_serializing_if = "Option::is_none")]
         msg_id: Option<u64>,
     },
+    Read {
+        msg_id: u64,
+    },
+    ReadOk {
+        in_reply_to: u64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        msg_id: Option<u64>,
+        messages: Vec<serde_json::Value>,
+    },
 }
 
 #[cfg(test)]
