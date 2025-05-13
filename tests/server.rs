@@ -41,3 +41,14 @@ fn generate_message() {
     assert_eq!(ids.len(), 3);
     assert_eq!(ids.iter().collect::<HashSet<_>>().len(), ids.len());
 }
+
+#[test]
+fn broadcast_message() {
+    TestServer::new()
+        .send_str(
+            r#"{"src":"c1","dest":"n1","body":{"type":"broadcast","message":1000,"msg_id":1}}"#,
+        )
+        .expect_raw_message(
+            r#"{"src":"n1","dest":"c1","body":{"type":"broadcast_ok","in_reply_to":1}}"#,
+        );
+}

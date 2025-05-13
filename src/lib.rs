@@ -68,6 +68,18 @@ impl Server {
                     msg_id: _,
                     id: _,
                 } => todo!(),
+                messages::Body::Broadcast { message: _, msg_id } => {
+                    let reply = message.create_response(messages::Body::BroadcastOk {
+                        in_reply_to: msg_id,
+                        msg_id: None,
+                    });
+                    serde_json::to_writer(&mut output, &reply).unwrap();
+                    writeln!(&mut output).unwrap();
+                }
+                messages::Body::BroadcastOk {
+                    in_reply_to: _,
+                    msg_id: _,
+                } => todo!(),
             };
         }
     }

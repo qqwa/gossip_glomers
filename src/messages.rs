@@ -48,6 +48,15 @@ pub enum Body {
         msg_id: Option<u64>,
         id: String,
     },
+    Broadcast {
+        message: serde_json::Value,
+        msg_id: u64,
+    },
+    BroadcastOk {
+        in_reply_to: u64,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        msg_id: Option<u64>,
+    },
 }
 
 #[cfg(test)]
