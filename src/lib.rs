@@ -20,12 +20,7 @@ impl Server {
         }
     }
 
-    pub fn serve(
-        &mut self,
-        input: &mut dyn Read,
-        mut output: &mut dyn Write,
-        mut _log: &mut dyn Write,
-    ) {
+    pub fn serve(&mut self, input: &mut dyn Read, mut output: &mut dyn Write, log: &mut dyn Write) {
         let input = BufReader::new(input);
         for line in input.lines() {
             let Ok(line) = line else {
@@ -34,7 +29,6 @@ impl Server {
             let Ok(message) = serde_json::from_str::<Message>(&line) else {
                 continue;
             };
-            // writeln!(&mut _log, "{}", line).unwrap();
             match message.body {
                 messages::Body::Init {
                     msg_id,
@@ -46,7 +40,6 @@ impl Server {
                         in_reply_to: msg_id,
                     });
                     send_message(&mut output, &reply);
-                    // output.flush().unwrap();
                 }
                 messages::Body::InitOk { in_reply_to: _ } => todo!(),
                 messages::Body::Echo { msg_id, ref echo } => {
@@ -79,8 +72,9 @@ impl Server {
                     message: ref msg,
                     msg_id,
                 } => {
-                    self.save_message(msg);
-                    self.broadcast_value(output, msg.clone(), &message.src);
+                    if self.save_message(msg) {
+                        self.broadcast_value(output, msg.clone(), &message.src);
+                    }
                     let reply = message.create_response(messages::Body::BroadcastOk {
                         in_reply_to: msg_id,
                         msg_id: None,
@@ -110,6 +104,7 @@ impl Server {
                     msg_id,
                     ref topology,
                 } => {
+                    writeln!(log, "Topology: {:#?}", topology).unwrap();
                     self.neighbors = topology
                         .get(self.me.as_ref().expect("Did not receive init message"))
                         .expect("topology did not include me")
@@ -145,16 +140,20 @@ impl Server {
         }
     }
 
-    fn save_message(&mut self, value: &Value) {
+    /// Returns `true` if we haven't seen the message before
+    fn save_message(&mut self, value: &Value) -> bool {
         if !self.messages.contains(value) {
             self.messages.push(value.clone());
+            return true;
         }
+        false
     }
 }
 
 fn send_message(mut output: &mut dyn Write, message: &Message) {
     serde_json::to_writer(&mut output, &message).unwrap();
     writeln!(&mut output).unwrap();
+    output.flush().unwrap();
 }
 
 impl Default for Server {
