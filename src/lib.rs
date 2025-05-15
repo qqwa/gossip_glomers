@@ -9,19 +9,29 @@ pub struct Server {
     messages: Vec<Value>,
     me: Option<String>,
     neighbors: Vec<String>,
+    input: Option<Box<dyn Read + Send + 'static>>,
+    output: Box<dyn Write + Send + 'static>,
+    log: Box<dyn Write + Send + 'static>,
 }
 
 impl Server {
-    pub fn new() -> Server {
+    pub fn new<R: Read + Send + 'static, W1: Write + Send + 'static, W2: Write + Send + 'static>(
+        input: R,
+        output: W1,
+        log: W2,
+    ) -> Server {
         Server {
             messages: Vec::new(),
             me: None,
             neighbors: Vec::new(),
+            input: Some(Box::new(input)),
+            output: Box::new(output),
+            log: Box::new(log),
         }
     }
 
-    pub fn serve(&mut self, input: &mut dyn Read, mut output: &mut dyn Write, log: &mut dyn Write) {
-        let input = BufReader::new(input);
+    pub fn serve(&mut self) {
+        let input = BufReader::new(self.input.take().unwrap());
         for line in input.lines() {
             let Ok(line) = line else {
                 continue;
@@ -39,7 +49,7 @@ impl Server {
                     let reply = message.create_response(messages::Body::InitOk {
                         in_reply_to: msg_id,
                     });
-                    send_message(&mut output, &reply);
+                    send_message(&mut self.output, &reply);
                 }
                 messages::Body::InitOk { in_reply_to: _ } => todo!(),
                 messages::Body::Echo { msg_id, ref echo } => {
@@ -48,7 +58,7 @@ impl Server {
                         in_reply_to: msg_id,
                         echo: echo.clone(),
                     });
-                    send_message(&mut output, &reply);
+                    send_message(&mut self.output, &reply);
                 }
                 messages::Body::EchoOk {
                     msg_id: _,
@@ -61,7 +71,7 @@ impl Server {
                         msg_id: None,
                         id: Uuid::new_v4().to_string(),
                     });
-                    send_message(&mut output, &reply);
+                    send_message(&mut self.output, &reply);
                 }
                 messages::Body::GenerateOk {
                     in_reply_to: _,
@@ -72,14 +82,15 @@ impl Server {
                     message: ref msg,
                     msg_id,
                 } => {
-                    if self.save_message(msg) {
-                        self.broadcast_value(output, msg.clone(), &message.src);
+                    let saved_message = self.save_message(msg);
+                    if saved_message {
+                        self.broadcast_value(msg.clone(), &message.src);
                     }
                     let reply = message.create_response(messages::Body::BroadcastOk {
                         in_reply_to: msg_id,
                         msg_id: None,
                     });
-                    send_message(&mut output, &reply);
+                    send_message(&mut self.output, &reply);
                 }
                 messages::Body::BroadcastOk {
                     in_reply_to: _,
@@ -93,7 +104,7 @@ impl Server {
                         msg_id: None,
                         messages: self.messages.clone(),
                     });
-                    send_message(&mut output, &reply);
+                    send_message(&mut self.output, &reply);
                 }
                 messages::Body::ReadOk {
                     in_reply_to: _,
@@ -104,7 +115,7 @@ impl Server {
                     msg_id,
                     ref topology,
                 } => {
-                    writeln!(log, "Topology: {:#?}", topology).unwrap();
+                    writeln!(self.log, "Topology: {:#?}", topology).unwrap();
                     self.neighbors = topology
                         .get(self.me.as_ref().expect("Did not receive init message"))
                         .expect("topology did not include me")
@@ -113,7 +124,7 @@ impl Server {
                         in_reply_to: msg_id,
                         msg_id: None,
                     });
-                    send_message(&mut output, &reply);
+                    send_message(&mut self.output, &reply);
                 }
                 messages::Body::TopologyOk {
                     in_reply_to: _,
@@ -123,7 +134,7 @@ impl Server {
         }
     }
 
-    fn broadcast_value(&mut self, output: &mut dyn Write, value: Value, src: &str) {
+    fn broadcast_value(&mut self, value: Value, src: &str) {
         let mut msg = Message {
             src: self.me.clone().unwrap(),
             dest: "".to_string(),
@@ -135,7 +146,7 @@ impl Server {
         for node in &self.neighbors {
             if node != src {
                 msg.dest = node.clone();
-                send_message(output, &msg);
+                send_message(&mut self.output, &msg);
             }
         }
     }
@@ -154,10 +165,4 @@ fn send_message(mut output: &mut dyn Write, message: &Message) {
     serde_json::to_writer(&mut output, &message).unwrap();
     writeln!(&mut output).unwrap();
     output.flush().unwrap();
-}
-
-impl Default for Server {
-    fn default() -> Self {
-        Self::new()
-    }
 }

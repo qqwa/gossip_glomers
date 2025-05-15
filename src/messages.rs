@@ -79,6 +79,25 @@ pub enum Body {
     },
 }
 
+impl ToString for Message {
+    fn to_string(&self) -> String {
+        match self.body {
+            Body::Init { .. } => "init".to_string(),
+            Body::InitOk { .. } => "init_ok".to_string(),
+            Body::Echo { .. } => "echo".to_string(),
+            Body::EchoOk { .. } => "echo_ok".to_string(),
+            Body::Generate { .. } => "generate".to_string(),
+            Body::GenerateOk { .. } => "generate_ok".to_string(),
+            Body::Broadcast { .. } => "broadcast".to_string(),
+            Body::BroadcastOk { .. } => "broadcast_ok".to_string(),
+            Body::Read { .. } => "read".to_string(),
+            Body::ReadOk { .. } => "read_ok".to_string(),
+            Body::Topology { .. } => "topology".to_string(),
+            Body::TopologyOk { .. } => "topology_ok".to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;

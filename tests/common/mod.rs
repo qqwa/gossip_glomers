@@ -11,6 +11,7 @@ pub struct TestServer {
     output_raw_msgs: Vec<String>,
     input_sender: Option<Sender<String>>,
     output_receiver: Receiver<String>,
+    log_receiver: Receiver<String>,
     handle: JoinHandle<()>,
 }
 
@@ -34,18 +35,18 @@ impl TestServer {
     pub fn new() -> TestServer {
         let (input_sender, input_receiver) = ReceiverRead::new();
         let (output_sender, output_receiver) = SenderWrite::new();
+        let (log_sender, log_receiver) = SenderWrite::new();
 
         let handle = thread::spawn(move || {
-            let mut server = Server::new();
-            let mut input = input_receiver;
-            let mut output = output_sender;
-            server.serve(&mut input, &mut output, &mut Vec::new());
+            let mut server = Server::new(input_receiver, output_sender, log_sender);
+            server.serve();
         });
 
         TestServer {
             output_raw_msgs: Vec::new(),
             input_sender: Some(input_sender),
             output_receiver,
+            log_receiver,
             handle,
         }
     }
