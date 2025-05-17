@@ -1,6 +1,9 @@
 use std::io::{BufRead, BufReader, Read, Write};
 
-use messages::Message;
+use messages::{
+    Broadcast, BroadcastOk, Echo, EchoOk, Generate, GenerateOk, Init, InitOk, Message, ReadOk,
+    Topology, TopologyOk,
+};
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -40,96 +43,96 @@ impl Server {
                 continue;
             };
             match message.body {
-                messages::Body::Init {
+                messages::Body::Init(Init {
                     msg_id,
                     ref node_id,
                     node_ids: _,
-                } => {
+                }) => {
                     self.me = Some(node_id.clone());
-                    let reply = message.create_response(messages::Body::InitOk {
+                    let reply = message.create_response(messages::Body::InitOk(InitOk {
                         in_reply_to: msg_id,
-                    });
+                    }));
                     send_message(&mut self.output, &reply);
                 }
-                messages::Body::InitOk { in_reply_to: _ } => todo!(),
-                messages::Body::Echo { msg_id, ref echo } => {
-                    let reply = message.create_response(messages::Body::EchoOk {
+                messages::Body::InitOk(InitOk { in_reply_to: _ }) => todo!(),
+                messages::Body::Echo(Echo { msg_id, ref echo }) => {
+                    let reply = message.create_response(messages::Body::EchoOk(EchoOk {
                         msg_id: None,
                         in_reply_to: msg_id,
                         echo: echo.clone(),
-                    });
+                    }));
                     send_message(&mut self.output, &reply);
                 }
-                messages::Body::EchoOk {
+                messages::Body::EchoOk(EchoOk {
                     msg_id: _,
                     in_reply_to: _,
                     echo: _,
-                } => todo!(),
-                messages::Body::Generate { msg_id } => {
-                    let reply = message.create_response(messages::Body::GenerateOk {
+                }) => todo!(),
+                messages::Body::Generate(Generate { msg_id }) => {
+                    let reply = message.create_response(messages::Body::GenerateOk(GenerateOk {
                         in_reply_to: msg_id,
                         msg_id: None,
                         id: Uuid::new_v4().to_string(),
-                    });
+                    }));
                     send_message(&mut self.output, &reply);
                 }
-                messages::Body::GenerateOk {
+                messages::Body::GenerateOk(GenerateOk {
                     in_reply_to: _,
                     msg_id: _,
                     id: _,
-                } => todo!(),
-                messages::Body::Broadcast {
+                }) => todo!(),
+                messages::Body::Broadcast(Broadcast {
                     message: ref msg,
                     msg_id,
-                } => {
+                }) => {
                     let saved_message = self.save_message(msg);
                     if saved_message {
                         self.broadcast_value(msg.clone(), &message.src);
                     }
-                    let reply = message.create_response(messages::Body::BroadcastOk {
+                    let reply = message.create_response(messages::Body::BroadcastOk(BroadcastOk {
                         in_reply_to: msg_id,
                         msg_id: None,
-                    });
+                    }));
                     send_message(&mut self.output, &reply);
                 }
-                messages::Body::BroadcastOk {
+                messages::Body::BroadcastOk(BroadcastOk {
                     in_reply_to: _,
                     msg_id: _,
-                } => {
+                }) => {
                     // TODO: have msg_ids for broadcast send and clear them when receiving ok
                 }
-                messages::Body::Read { msg_id } => {
-                    let reply = message.create_response(messages::Body::ReadOk {
+                messages::Body::Read(messages::Read { msg_id }) => {
+                    let reply = message.create_response(messages::Body::ReadOk(ReadOk {
                         in_reply_to: msg_id,
                         msg_id: None,
                         messages: self.messages.clone(),
-                    });
+                    }));
                     send_message(&mut self.output, &reply);
                 }
-                messages::Body::ReadOk {
+                messages::Body::ReadOk(ReadOk {
                     in_reply_to: _,
                     msg_id: _,
                     messages: _,
-                } => todo!(),
-                messages::Body::Topology {
+                }) => todo!(),
+                messages::Body::Topology(Topology {
                     msg_id,
                     ref topology,
-                } => {
+                }) => {
                     writeln!(self.log, "Topology: {:#?}", topology).unwrap();
                     self.neighbors = topology
                         .get(self.me.as_ref().expect("Did not receive init message"))
                         .expect("topology did not include me")
                         .clone();
-                    let reply = message.create_response(messages::Body::TopologyOk {
+                    let reply = message.create_response(messages::Body::TopologyOk(TopologyOk {
                         in_reply_to: msg_id,
                         msg_id: None,
-                    });
+                    }));
                     send_message(&mut self.output, &reply);
                 }
-                messages::Body::TopologyOk {
+                messages::Body::TopologyOk(TopologyOk {
                     in_reply_to: _,
                     msg_id: _,
-                } => todo!(),
+                }) => todo!(),
             };
         }
     }
@@ -138,10 +141,10 @@ impl Server {
         let mut msg = Message {
             src: self.me.clone().unwrap(),
             dest: "".to_string(),
-            body: messages::Body::Broadcast {
+            body: messages::Body::Broadcast(Broadcast {
                 message: value,
                 msg_id: 1,
-            },
+            }),
         };
         for node in &self.neighbors {
             if node != src {

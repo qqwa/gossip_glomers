@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use common::TestServer;
-use gossip_glomers::messages::{Body, Message};
+use gossip_glomers::messages::{Body, Broadcast, GenerateOk, Message, ReadOk};
 use serde_json::{Number, Value};
 mod common;
 
@@ -31,7 +31,7 @@ fn generate_message() {
         .get_parsed_messages()
         .into_iter()
         .filter_map(|msg| {
-            if let Body::GenerateOk { id, .. } = msg.body {
+            if let Body::GenerateOk(GenerateOk { id, .. }) = msg.body {
                 Some(id)
             } else {
                 None
@@ -79,11 +79,11 @@ fn read_message_single_value() {
         .collect::<Vec<_>>();
 
     assert_eq!(msgs.len(), 1);
-    if let Body::ReadOk {
+    if let Body::ReadOk(ReadOk {
         in_reply_to: _,
         msg_id: _,
         messages,
-    } = &msgs[0].body
+    }) = &msgs[0].body
     {
         let want: &[Value] = &[Number::from_u128(1000).into()];
         assert_eq!(messages, want);
@@ -111,11 +111,11 @@ fn read_message_different_value() {
         .collect::<Vec<_>>();
 
     assert_eq!(msgs.len(), 1);
-    if let Body::ReadOk {
+    if let Body::ReadOk(ReadOk {
         in_reply_to: _,
         msg_id: _,
         messages,
-    } = &msgs[0].body
+    }) = &msgs[0].body
     {
         let want: &[Value] = &[
             Number::from_u128(1000).into(),
@@ -146,11 +146,11 @@ fn read_message_duplicate_value() {
         .collect::<Vec<_>>();
 
     assert_eq!(msgs.len(), 1);
-    if let Body::ReadOk {
+    if let Body::ReadOk(ReadOk {
         in_reply_to: _,
         msg_id: _,
         messages,
-    } = &msgs[0].body
+    }) = &msgs[0].body
     {
         let want: &[Value] = &[Number::from_u128(1000).into()];
         assert_eq!(messages, want);
@@ -179,10 +179,10 @@ fn forward_broadcast_messages() {
     let expect = Message {
         src: "n0".to_string(),
         dest: "n1".to_string(),
-        body: Body::Broadcast {
+        body: Body::Broadcast(Broadcast {
             message: Value::String("text".to_string()),
             msg_id: 1,
-        },
+        }),
     };
     let send_broadcast_message_to_n1 = server
         .get_parsed_messages()
