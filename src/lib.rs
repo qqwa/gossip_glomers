@@ -1,13 +1,123 @@
-use std::io::{BufRead, BufReader, Read, Write};
+use std::{
+    io::{BufRead, BufReader, Read, Write},
+    sync::mpsc::{self, Receiver, Sender},
+    thread::{self, JoinHandle},
+    time::Duration,
+};
 
 use messages::{
-    Broadcast, BroadcastOk, Echo, EchoOk, Generate, GenerateOk, Init, InitOk, Message, ReadOk,
-    Topology, TopologyOk,
+    Body, Broadcast, BroadcastOk, Echo, EchoOk, Generate, GenerateOk, Init, InitOk, Message,
+    ReadOk, Topology, TopologyOk,
 };
+use router::Router;
 use serde_json::Value;
 use uuid::Uuid;
 
 pub mod messages;
+pub mod router;
+pub mod workloads;
+
+pub struct Server2<U> {
+    router: Router<U>,
+    user_data: U,
+    maelstrom_data: Maelstrom,
+    rx_input: Receiver<Message>,
+    tx_output: Sender<Message>,
+}
+
+#[derive(Default)]
+pub struct Maelstrom {
+    node_id: String,
+}
+
+impl Maelstrom {
+    pub fn create_message(&self, dest: &str, body: Body) -> Message {
+        Message {
+            src: self.node_id.clone(),
+            dest: dest.to_string(),
+            body,
+        }
+    }
+}
+
+impl<U> Server2<U> {
+    pub fn new<R: BufRead + Send + 'static, W: Write + Send + 'static>(
+        reader: R,
+        writer: W,
+        router: Router<U>,
+        user_data: U,
+    ) -> Self {
+        let (tx_input, rx_input) = mpsc::channel();
+        let (tx_output, rx_output) = mpsc::channel();
+        Self::start_input_thread(reader, tx_input);
+        Self::start_output_thread(writer, rx_output);
+        Self {
+            router,
+            user_data,
+            rx_input,
+            tx_output,
+            maelstrom_data: Maelstrom::default(),
+        }
+    }
+
+    fn start_input_thread<R: BufRead + Send + 'static>(
+        mut reader: R,
+        tx_input: Sender<Message>,
+    ) -> JoinHandle<()> {
+        thread::spawn(move || {
+            let mut line = String::new();
+            loop {
+                line.clear();
+                match reader.read_line(&mut line) {
+                    Ok(0) => break,
+                    Err(_) => break,
+                    Ok(_) => match serde_json::from_str::<Message>(&line) {
+                        Ok(message) => tx_input
+                            .send(message)
+                            .expect("Channel closed, panic will end this thread"),
+                        Err(err) => eprintln!("Could not parse message: {}", err),
+                    },
+                }
+            }
+        })
+    }
+
+    fn start_output_thread<W: Write + Send + 'static>(
+        mut writer: W,
+        rx_output: Receiver<Message>,
+    ) -> JoinHandle<()> {
+        thread::spawn(move || {
+            for message in rx_output {
+                match serde_json::to_string(&message) {
+                    Ok(text) => writeln!(writer, "{}", text).expect("Error writing to output"),
+                    Err(err) => {
+                        eprintln!("Could not convert {:?} to json string: {}", message, err)
+                    }
+                }
+            }
+        })
+    }
+
+    pub fn serve(&mut self) {
+        loop {
+            let mut did_work = false;
+            if let Ok(msg) = self.rx_input.try_recv() {
+                self.router.handle(
+                    msg,
+                    &mut self.tx_output,
+                    &mut self.maelstrom_data,
+                    &mut self.user_data,
+                );
+                did_work = true;
+            }
+
+            if !did_work {
+                thread::sleep(Duration::from_millis(5));
+            }
+        }
+    }
+}
+
 pub struct Server {
     messages: Vec<Value>,
     me: Option<String>,

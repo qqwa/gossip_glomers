@@ -11,14 +11,14 @@ impl Message {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Message {
     pub src: String,
     pub dest: String,
     pub body: Body,
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum Body {
@@ -36,73 +36,90 @@ pub enum Body {
     ReadOk(ReadOk),
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Init {
     pub msg_id: u64,
     pub node_id: String,
     pub node_ids: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct InitOk {
     pub in_reply_to: u64,
 }
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Echo {
     pub msg_id: u64,
     pub echo: String,
 }
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct EchoOk {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub msg_id: Option<u64>,
     pub in_reply_to: u64,
     pub echo: String,
 }
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Generate {
     pub msg_id: u64,
 }
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct GenerateOk {
     pub in_reply_to: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub msg_id: Option<u64>,
     pub id: String,
 }
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Broadcast {
     pub message: serde_json::Value,
     pub msg_id: u64,
 }
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct BroadcastOk {
     pub in_reply_to: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub msg_id: Option<u64>,
 }
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Read {
     pub msg_id: u64,
 }
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct ReadOk {
     pub in_reply_to: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub msg_id: Option<u64>,
     pub messages: Vec<serde_json::Value>,
 }
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct Topology {
     pub msg_id: u64,
     pub topology: HashMap<String, Vec<String>>,
 }
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone)]
 pub struct TopologyOk {
     pub in_reply_to: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub msg_id: Option<u64>,
 }
+
+macro_rules! impl_form_body {
+    ($variant:ident) => {
+        impl From<Body> for $variant {
+            fn from(body: Body) -> Self {
+                if let Body::$variant(inner) = body {
+                    inner
+                } else {
+                    panic!("should not happen");
+                }
+            }
+        }
+    };
+}
+
+impl_form_body!(Init);
+impl_form_body!(InitOk);
 
 #[cfg(test)]
 mod tests {
