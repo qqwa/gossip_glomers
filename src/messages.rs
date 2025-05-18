@@ -120,6 +120,8 @@ macro_rules! impl_form_body {
 
 impl_form_body!(Init);
 impl_form_body!(InitOk);
+impl_form_body!(Echo);
+impl_form_body!(EchoOk);
 
 #[cfg(test)]
 mod tests {

@@ -10,7 +10,8 @@ use crate::{
     },
 };
 
-type HandlerFn<U> = dyn Fn(&Body, &mut Sender<Message>, &str, &mut Maelstrom, &mut U);
+type HandlerFn<U> =
+    dyn Fn(&Body, &mut Sender<Message>, &str, &mut Maelstrom, &mut U) + Send + 'static;
 
 #[derive(Default)]
 pub struct Router<U> {
@@ -22,7 +23,7 @@ impl<U> Router<U> {
     where
         M: 'static + DeserializeOwned,
         Body: Into<M> + Clone,
-        F: 'static + Fn(M, &mut Sender<Message>, &str, &mut Maelstrom, &mut U),
+        F: Fn(M, &mut Sender<Message>, &str, &mut Maelstrom, &mut U) + Send + 'static,
     {
         let key = TypeId::of::<M>();
         let handler = move |body: &Body,

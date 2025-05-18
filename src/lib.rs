@@ -17,6 +17,9 @@ pub mod messages;
 pub mod router;
 pub mod workloads;
 
+#[cfg(test)]
+mod testing;
+
 pub struct Server2<U> {
     router: Router<U>,
     user_data: U,
@@ -100,19 +103,13 @@ impl<U> Server2<U> {
 
     pub fn serve(&mut self) {
         loop {
-            let mut did_work = false;
-            if let Ok(msg) = self.rx_input.try_recv() {
+            if let Ok(msg) = self.rx_input.recv_timeout(Duration::from_millis(50)) {
                 self.router.handle(
                     msg,
                     &mut self.tx_output,
                     &mut self.maelstrom_data,
                     &mut self.user_data,
                 );
-                did_work = true;
-            }
-
-            if !did_work {
-                thread::sleep(Duration::from_millis(5));
             }
         }
     }
