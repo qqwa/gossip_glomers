@@ -104,7 +104,7 @@ pub struct TopologyOk {
     pub msg_id: Option<u64>,
 }
 
-macro_rules! impl_form_body {
+macro_rules! impl_from_body {
     ($variant:ident) => {
         impl From<Body> for $variant {
             fn from(body: Body) -> Self {
@@ -118,12 +118,12 @@ macro_rules! impl_form_body {
     };
 }
 
-impl_form_body!(Init);
-impl_form_body!(InitOk);
-impl_form_body!(Echo);
-impl_form_body!(EchoOk);
-impl_form_body!(Generate);
-impl_form_body!(GenerateOk);
+impl_from_body!(Init);
+impl_from_body!(InitOk);
+impl_from_body!(Echo);
+impl_from_body!(EchoOk);
+impl_from_body!(Generate);
+impl_from_body!(GenerateOk);
 
 #[cfg(test)]
 mod tests {
