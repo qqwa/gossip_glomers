@@ -122,6 +122,8 @@ impl_form_body!(Init);
 impl_form_body!(InitOk);
 impl_form_body!(Echo);
 impl_form_body!(EchoOk);
+impl_form_body!(Generate);
+impl_form_body!(GenerateOk);
 
 #[cfg(test)]
 mod tests {

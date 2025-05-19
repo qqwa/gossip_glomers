@@ -8,9 +8,10 @@ use std::{
 use crate::{Server2, messages::Message, router::Router};
 
 pub struct TestServer {
-    output_raw_msgs: Vec<Message>,
+    output_msgs: Vec<Message>,
     input_sender: Option<Sender<String>>,
     output_receiver: Receiver<String>,
+    default_timeout: Duration,
 }
 
 impl TestServer {
@@ -25,9 +26,10 @@ impl TestServer {
         });
 
         TestServer {
-            output_raw_msgs: Vec::new(),
+            output_msgs: Vec::new(),
             input_sender: Some(input_sender),
             output_receiver,
+            default_timeout: Duration::from_millis(20),
         }
     }
 
@@ -43,14 +45,14 @@ impl TestServer {
     where
         F: Fn(&Message) -> bool,
     {
-        self.assert_msg_received_timeout(predicate, Duration::from_millis(10));
+        self.assert_msg_received_timeout(predicate, self.default_timeout);
     }
 
     pub fn assert_msg_received_timeout<F>(&mut self, predicate: F, timeout: Duration)
     where
         F: Fn(&Message) -> bool,
     {
-        for msg in &self.output_raw_msgs {
+        for msg in &self.output_msgs {
             if predicate(msg) {
                 return;
             }
@@ -62,7 +64,7 @@ impl TestServer {
                 Ok(msg_str) => {
                     let msg = parse_raw_message(msg_str);
                     let found = predicate(&msg);
-                    self.output_raw_msgs.push(msg);
+                    self.output_msgs.push(msg);
                     if found {
                         return;
                     }
@@ -73,8 +75,25 @@ impl TestServer {
 
         panic!(
             "No matching message was cached or received before timeout buffer:\n{:#?}",
-            self.output_raw_msgs
+            self.output_msgs
         );
+    }
+
+    pub fn wait_for_messages(mut self) -> Self {
+        loop {
+            match self.output_receiver.recv_timeout(self.default_timeout) {
+                Ok(msg_str) => {
+                    let msg = parse_raw_message(msg_str);
+                    self.output_msgs.push(msg);
+                }
+                Err(_) => break,
+            }
+        }
+        self
+    }
+
+    pub fn get_messages(&self) -> &Vec<Message> {
+        &self.output_msgs
     }
 }
 
