@@ -5,7 +5,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{Server2, messages::Message, router::Router};
+use crate::{Server, messages::Message, router::Router};
 
 pub struct TestServer {
     output_msgs: Vec<Message>,
@@ -21,7 +21,7 @@ impl TestServer {
 
         thread::spawn(move || {
             let reader = BufReader::new(input_receiver);
-            let mut server = Server2::new(reader, output_sender, router, U::default());
+            let mut server = Server::new(reader, output_sender, router, U::default());
             server.serve();
         });
 

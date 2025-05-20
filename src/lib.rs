@@ -15,7 +15,7 @@ pub mod workloads;
 #[cfg(test)]
 mod testing;
 
-pub struct Server2<U> {
+pub struct Server<U> {
     router: Router<U>,
     user_data: U,
     maelstrom_data: Maelstrom,
@@ -38,7 +38,7 @@ impl Maelstrom {
     }
 }
 
-impl<U> Server2<U> {
+impl<U> Server<U> {
     pub fn new<R: BufRead + Send + 'static, W: Write + Send + 'static>(
         reader: R,
         writer: W,

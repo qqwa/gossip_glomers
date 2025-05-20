@@ -1,7 +1,7 @@
 use std::io::{self, BufReader};
 
 use gossip_glomers::{
-    Server2,
+    Server,
     router::Router,
     workloads::{echo::insert_echo_handlers, init},
 };
@@ -11,6 +11,6 @@ fn main() {
     insert_echo_handlers(&mut router);
 
     let reader = BufReader::new(io::stdin());
-    let mut server = Server2::new(reader, io::stdout(), router, ());
+    let mut server = Server::new(reader, io::stdout(), router, ());
     server.serve();
 }
