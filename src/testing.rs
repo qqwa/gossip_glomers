@@ -41,20 +41,21 @@ impl TestServer {
         self
     }
 
-    pub fn assert_msg_received_default_timeout<F>(&mut self, predicate: F)
+    pub fn assert_msg_received_default_timeout<F>(self, predicate: F) -> Self
     where
         F: Fn(&Message) -> bool,
     {
-        self.assert_msg_received_timeout(predicate, self.default_timeout);
+        let timeout = self.default_timeout;
+        self.assert_msg_received_timeout(predicate, timeout)
     }
 
-    pub fn assert_msg_received_timeout<F>(&mut self, predicate: F, timeout: Duration)
+    pub fn assert_msg_received_timeout<F>(mut self, predicate: F, timeout: Duration) -> Self
     where
         F: Fn(&Message) -> bool,
     {
         for msg in &self.output_msgs {
             if predicate(msg) {
-                return;
+                return self;
             }
         }
 
@@ -66,7 +67,7 @@ impl TestServer {
                     let found = predicate(&msg);
                     self.output_msgs.push(msg);
                     if found {
-                        return;
+                        return self;
                     }
                 }
                 Err(_) => {}

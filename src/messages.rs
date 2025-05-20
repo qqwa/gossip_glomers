@@ -124,6 +124,12 @@ impl_from_body!(Echo);
 impl_from_body!(EchoOk);
 impl_from_body!(Generate);
 impl_from_body!(GenerateOk);
+impl_from_body!(Broadcast);
+impl_from_body!(BroadcastOk);
+impl_from_body!(Read);
+impl_from_body!(ReadOk);
+impl_from_body!(Topology);
+impl_from_body!(TopologyOk);
 
 #[cfg(test)]
 mod tests {
