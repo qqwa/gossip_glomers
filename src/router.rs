@@ -16,6 +16,7 @@ type HandlerFn<U> =
 #[derive(Default)]
 pub struct Router<U> {
     handlers: HashMap<TypeId, Box<HandlerFn<U>>>,
+    tick: Option<Box<dyn Fn(&mut Sender<Message>, &mut Maelstrom, &mut U) + Send + 'static>>,
 }
 
 impl<U> Router<U> {
@@ -35,6 +36,24 @@ impl<U> Router<U> {
             handler(m, tx_output, src, maelstrom, user_data)
         };
         self.handlers.insert(key, Box::new(handler));
+    }
+
+    pub fn set_tick<F>(&mut self, handler: F)
+    where
+        F: Fn(&mut Sender<Message>, &mut Maelstrom, &mut U) + Send + 'static,
+    {
+        self.tick = Some(Box::new(handler));
+    }
+
+    pub fn tick(
+        &self,
+        tx_output: &mut Sender<Message>,
+        maelstrom_data: &mut Maelstrom,
+        user_data: &mut U,
+    ) {
+        if let Some(tick) = &self.tick {
+            tick(tx_output, maelstrom_data, user_data);
+        }
     }
 
     pub fn handle(

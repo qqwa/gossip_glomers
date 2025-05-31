@@ -23,7 +23,7 @@ broadcast-multi: $(TARGET_)
 	./maelstrom test -w broadcast --bin $(TARGET_BROADCAST_SIMPLE) --time-limit 20 --rate 10 --node-count 5
 
 broadcast-faulty: $(TARGET_)
-	./maelstrom test -w broadcast --bin $(TARGET_) --time-limit 20 --rate 10 --node-count 5 --nemesis partition
+	./maelstrom test -w broadcast --bin $(TARGET_BROADCAST_SIMPLE) --time-limit 20 --rate 10 --node-count 5 --nemesis partition
 
 serve:
 	./maelstrom serve

@@ -1,4 +1,5 @@
 use std::{
+    fmt::Debug,
     io::{BufReader, Cursor, Read, Write},
     sync::mpsc::{self, Receiver, Sender},
     thread,
@@ -15,7 +16,10 @@ pub struct TestServer {
 }
 
 impl TestServer {
-    pub fn from_router<U: Default + 'static>(router: Router<U>) -> TestServer {
+    pub fn from_router<U>(router: Router<U>) -> TestServer
+    where
+        U: Default + Debug + 'static,
+    {
         let (input_sender, input_receiver) = ReceiverRead::new();
         let (output_sender, output_receiver) = SenderWrite::new();
 

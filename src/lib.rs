@@ -1,4 +1,5 @@
 use std::{
+    fmt::Debug,
     io::{BufRead, Write},
     sync::mpsc::{self, Receiver, Sender},
     thread::{self, JoinHandle},
@@ -15,7 +16,10 @@ pub mod workloads;
 #[cfg(test)]
 mod testing;
 
-pub struct Server<U> {
+pub struct Server<U>
+where
+    U: Debug,
+{
     router: Router<U>,
     user_data: U,
     maelstrom_data: Maelstrom,
@@ -23,9 +27,10 @@ pub struct Server<U> {
     tx_output: Sender<Message>,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Maelstrom {
     node_id: String,
+    counter: u64,
 }
 
 impl Maelstrom {
@@ -36,9 +41,18 @@ impl Maelstrom {
             body,
         }
     }
+
+    pub fn generate_id(&mut self) -> u64 {
+        let id = self.counter;
+        self.counter += 1;
+        id
+    }
 }
 
-impl<U> Server<U> {
+impl<U> Server<U>
+where
+    U: Debug,
+{
     pub fn new<R: BufRead + Send + 'static, W: Write + Send + 'static>(
         reader: R,
         writer: W,
@@ -106,6 +120,11 @@ impl<U> Server<U> {
                     &mut self.user_data,
                 );
             }
+            self.router.tick(
+                &mut self.tx_output,
+                &mut self.maelstrom_data,
+                &mut self.user_data,
+            );
         }
     }
 }
